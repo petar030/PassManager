@@ -1,6 +1,30 @@
 import argparse
+import atexit
+import signal
 import sys
 from core import *
+
+class encryption_data:
+    file_name = None
+    password = None
+    @classmethod
+    def set_password(cls, password):
+        cls.password = password
+    @classmethod
+    def get_password(cls):
+        return cls.password
+    @classmethod
+    def set_file_name(cls, file_name):
+        cls.file_name = file_name
+    @classmethod
+    def get_file_name(cls):
+        return cls.file_name
+    @classmethod
+    def encrypt(cls):
+        if cls.file_name is not None:
+            encrypt(cls.file_name, cls.password)
+            cls.file_name = None
+            cls.password = None
 
 def modify_existing_file(file_name):
     if not authenticate(file_name):
@@ -49,6 +73,7 @@ def modify_existing_file(file_name):
             print("\nListing start:")
             list_entries(file_name)
             print("Listing end.\n")
+    encryption_data.encrypt()
 def interactive_main():
     print("Welcome to PassManager")
     while True:
@@ -115,30 +140,23 @@ def arguments_main(args, argparser):
             print("Error listing entries.")
     else:
         argparser.print_help()
+        encryption_data.encrypt()
         sys.exit(1)
+    encryption_data.encrypt()
 def authenticate(file_name):
-    try:
-        with open(file_name, "r") as pass_file:
-            data = json.load(pass_file)
-            if "metadata" in data and "salt" in data["metadata"] and "hash" in data["metadata"]:
-                salt = bytes.fromhex(data["metadata"]["salt"])
-                hashed_password = bytes.fromhex(data["metadata"]["hash"])
-                for i in range(0, 3):
-                    password = input("Enter the password for the file: ")
-                    if bcrypt.checkpw(password.encode('utf-8'), hashed_password):
-                        print("Password correct. Authentication successful.")
-                        return True
-                    elif i == 2:
-                        print("Password incorrect. Authentication unsuccessful")
-                        return False
-                    else:
-                        print("Incorrect password. Please try again.")
-            else:
-                print("Invalid file format.")
-                return False
-    except Exception as e:
-        print(f"Error reading file '{file_name}': {e}")
-        return False
+    for i in range(3):
+        password = input("Enter the password for the file: ")
+        if authenticate_core(file_name, password):
+            decrypt(file_name, password)
+            encryption_data.set_file_name(file_name)
+            encryption_data.set_password(password)
+            return True
+        elif i == 2:
+            print("Password incorrect. Authentication unsuccessful")
+            return False
+        else:
+            print("Incorrect password. Please try again.")
+
 def main():
     parser = argparse.ArgumentParser(description="PassManager is a command-line tool for managing password files.")
     parser.add_argument("--interactive", action="store_true", help="Run PassManager in interactive mode.")
@@ -159,5 +177,21 @@ def main():
         interactive_main()
     else:
         arguments_main(args, parser)
+
+
+def cleanup():
+    encryption_data.encrypt()
+
+def signal_handler(sig, frame):
+    cleanup()
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
+
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        cleanup()
+        sys.exit(0)
