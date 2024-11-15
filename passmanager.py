@@ -199,6 +199,7 @@ def signal_handler(sig, frame):
     cleanup()
     sys.exit(0)
 
+
 signal.signal(signal.SIGINT, signal_handler)
 signal.signal(signal.SIGTERM, signal_handler)
 
