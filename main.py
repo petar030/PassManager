@@ -157,24 +157,37 @@ def authenticate(file_name):
         else:
             print("Incorrect password. Please try again.")
 
+
 def main():
     parser = argparse.ArgumentParser(description="PassManager is a command-line tool for managing password files.")
     parser.add_argument("--interactive", action="store_true", help="Run PassManager in interactive mode.")
-    parser.add_argument("--new", nargs=1, metavar=("file_name, password"), help="Make new .pass file (filename without .pass)")
-    parser.add_argument("--add", nargs=4, metavar=("file_name", "name", "user", "password"), help="Add a new entry to a password file.")
-    parser.add_argument("--edit", nargs=4, metavar=("file_name", "name", "user", "password"), help="Edit an existing entry in a password file.")
-    parser.add_argument("--remove", nargs=2, metavar=("file_name", "name"), help="Remove an entry from a password file.")
+    parser.add_argument("--new", nargs=1, metavar=("file_name, password"),
+                        help="Make new .pass file (filename without .pass)")
+    parser.add_argument("--add", nargs=4, metavar=("file_name", "name", "user", "password"),
+                        help="Add a new entry to a password file.")
+    parser.add_argument("--edit", nargs=4, metavar=("file_name", "name", "user", "password"),
+                        help="Edit an existing entry in a password file.")
+    parser.add_argument("--remove", nargs=2, metavar=("file_name", "name"),
+                        help="Remove an entry from a password file.")
     parser.add_argument("--list", nargs=1, metavar=("file_name"), help="List all entries in a password file.")
-    if len(sys.argv) <= 1:
+    parser.add_argument("file", nargs="?", help="Open specified .pass file")
+
+    if len(sys.argv) < 1:
         parser.print_help()
         sys.exit(1)
 
+    if len(sys.argv) == 1:
+        sys.argv.append('--interactive')
+
     args = parser.parse_args()
-
-
 
     if args.interactive:
         interactive_main()
+    elif args.file:
+        if check_file_type(args.file):
+            modify_existing_file(args.file)
+        else:
+            print("Invalid file type or file does not exist.")
     else:
         arguments_main(args, parser)
 
